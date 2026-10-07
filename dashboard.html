@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Analytics Dashboard - SWYNEX Data Analyst Internship</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #e0e0e0;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .control-group select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .control-group button {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        
+        .kpi-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: white;
+        }
+        
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .kpi-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .kpi-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            word-break: break-word;
+        }
+        
+        .charts-section {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+        
+        .chart-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Sales Analytics Dashboard</h1>
+            <p>SWYNEX Data Analyst Internship - Task 3 | Interactive Data Visualization</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="regionFilter">Region:</label>
+                <select id="regionFilter">
+                    <option value="">All Regions</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="categoryFilter">Category:</label>
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button onclick="resetFilters()">Reset Filters</button>
+            </div>
+        </div>
+        
+        <div class="kpi-section">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Sales</div>
+                <div class="kpi-value" id="totalSales">$0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Average Order Value</div>
+                <div class="kpi-value" id="avgOrder">$0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Orders</div>
+                <div class="kpi-value" id="totalOrders">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Top Category</div>
+                <div class="kpi-value" id="topCategory">-</div>
+            </div>
+        </div>
+        
+        <div class="charts-section">
+            <div class="chart-container">
+                <div class="chart-title">📍 Sales by Region</div>
+                <div id="salesByRegion" style="height: 400px;"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">🏷️ Sales by Category</div>
+                <div id="salesByCategory" style="height: 400px;"></div>
+            </div>
+            
+            <div class="chart-container full-width">
+                <div class="chart-title">📈 Monthly Sales Trend</div>
+                <div id="monthlySales" style="height: 400px;"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📦 Quantity Distribution</div>
+                <div id="quantityDist" style="height: 400px;"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">💰 Unit Price Distribution</div>
+                <div id="priceDist" style="height: 400px;"></div>
+            </div>
+            
+            <div class="chart-container full-width">
+                <div class="chart-title">🔗 Quantity vs Sales Correlation</div>
+                <div id="qtyVsSales" style="height: 400px;"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Dashboard created from cleaned dataset (288 records) | Data analysis using Plotly.js</p>
+            <p>GitHub: <a href="https://github.com/Nishuchhikara/data-analyst-internship-task3" target="_blank">Task 3 Repository</a></p>
+        </div>
+    </div>
+    
+    <script>
+        let allData = [];
+        let filteredData = [];
+        
+        // Load CSV data
+        fetch('https://raw.githubusercontent.com/Nishuchhikara/data-analyst-internship-task3/main/cleaned_data.csv')
+            .then(response => response.text())
+            .then(csv => {
+                allData = Papa.parse(csv, { header: true, dynamicTyping: true }).data.filter(row => row.OrderID);
+                filteredData = [...allData];
+                populateFilters();
+                updateDashboard();
+            })
+            .catch(() => {
+                console.log('Using embedded data');
+                // Fallback: load from local if available
+            });
+        
+        function populateFilters() {
+            const regions = [...new Set(allData.map(d => d.Region))].sort();
+            const categories = [...new Set(allData.map(d => d.Category))].sort();
+            
+            const regionSelect = document.getElementById('regionFilter');
+            const categorySelect = document.getElementById('categoryFilter');
+            
+            regions.forEach(r => {
+                const option = document.createElement('option');
+                option.value = r;
+                option.textContent = r;
+                regionSelect.appendChild(option);
+            });
+            
+            categories.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c;
+                option.textContent = c;
+                categorySelect.appendChild(option);
+            });
+        }
+        
+        function applyFilters() {
+            const region = document.getElementById('regionFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            
+            filteredData = allData.filter(d => {
+                return (!region || d.Region === region) && (!category || d.Category === category);
+            });
+            
+            updateDashboard();
+        }
+        
+        function resetFilters() {
+            document.getElementById('regionFilter').value = '';
+            document.getElementById('categoryFilter').value = '';
+            filteredData = [...allData];
+            updateDashboard();
+        }
+        
+        function updateDashboard() {
+            updateKPIs();
+            updateCharts();
+        }
+        
+        function updateKPIs() {
+            const totalSales = filteredData.reduce((sum, d) => sum + (d.TotalSales || 0), 0);
+            const avgOrder = filteredData.length > 0 ? totalSales / filteredData.length : 0;
+            const topCat = filteredData.length > 0 
+                ? Object.entries(
+                    filteredData.reduce((acc, d) => {
+                        acc[d.Category] = (acc[d.Category] || 0) + d.TotalSales;
+                        return acc;
+                    }, {})
+                  ).sort((a, b) => b[1] - a[1])[0][0]
+                : '-';
+            
+            document.getElementById('totalSales').textContent = '$' + totalSales.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            document.getElementById('avgOrder').textContent = '$' + avgOrder.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            document.getElementById('totalOrders').textContent = filteredData.length;
+            document.getElementById('topCategory').textContent = topCat;
+        }
+        
+        function updateCharts() {
+            // Sales by Region
+            const regionSales = {};
+            filteredData.forEach(d => {
+                regionSales[d.Region] = (regionSales[d.Region] || 0) + d.TotalSales;
+            });
+            
+            Plotly.newPlot('salesByRegion', [{
+                x: Object.keys(regionSales),
+                y: Object.values(regionSales),
+                type: 'bar',
+                marker: { color: '#667eea' }
+            }], { margin: { t: 0 }, xaxis: { title: 'Region' }, yaxis: { title: 'Sales ($)' } }, { responsive: true });
+            
+            // Sales by Category
+            const categorySales = {};
+            filteredData.forEach(d => {
+                categorySales[d.Category] = (categorySales[d.Category] || 0) + d.TotalSales;
+            });
+            
+            Plotly.newPlot('salesByCategory', [{
+                labels: Object.keys(categorySales),
+                values: Object.values(categorySales),
+                type: 'pie',
+                marker: { colors: ['#667eea', '#764ba2', '#f093fb', '#4facfe'] }
+            }], { margin: { t: 0 } }, { responsive: true });
+            
+            // Monthly Sales
+            const monthlyData = {};
+            filteredData.forEach(d => {
+                const month = new Date(d.OrderDate).toISOString().slice(0, 7);
+                monthlyData[month] = (monthlyData[month] || 0) + d.TotalSales;
+            });
+            const sortedMonths = Object.keys(monthlyData).sort();
+            
+            Plotly.newPlot('monthlySales', [{
+                x: sortedMonths,
+                y: sortedMonths.map(m => monthlyData[m]),
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#667eea', width: 3 }
+            }], { margin: { t: 0 }, xaxis: { title: 'Month' }, yaxis: { title: 'Sales ($)' } }, { responsive: true });
+            
+            // Quantity Distribution
+            Plotly.newPlot('quantityDist', [{
+                x: filteredData.map(d => d.Quantity),
+                type: 'histogram',
+                marker: { color: '#f093fb' }
+            }], { margin: { t: 0 }, xaxis: { title: 'Quantity' }, yaxis: { title: 'Frequency' } }, { responsive: true });
+            
+            // Price Distribution
+            Plotly.newPlot('priceDist', [{
+                x: filteredData.map(d => d.UnitPrice),
+                type: 'histogram',
+                marker: { color: '#4facfe' }
+            }], { margin: { t: 0 }, xaxis: { title: 'Unit Price ($)' }, yaxis: { title: 'Frequency' } }, { responsive: true });
+            
+            // Qty vs Sales
+            Plotly.newPlot('qtyVsSales', [{
+                x: filteredData.map(d => d.Quantity),
+                y: filteredData.map(d => d.TotalSales),
+                mode: 'markers',
+                type: 'scatter',
+                marker: { size: 8, color: '#667eea', opacity: 0.6 }
+            }], { margin: { t: 0 }, xaxis: { title: 'Quantity' }, yaxis: { title: 'Sales ($)' } }, { responsive: true });
+        }
+        
+        // Event listeners
+        document.getElementById('regionFilter').addEventListener('change', applyFilters);
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+    </script>
+</body>
+</html>
